@@ -43,10 +43,13 @@ pub mod linked_list {
     }
 
 
+    // Method implementtations for LinkedList struct
     impl<T> LinkedList<T> {
 
-        
-        fn new_ll() -> LinkedList<T> {
+
+        /// Return a new, empty LinkedList struct with empty Weak references in head and tail
+        /// members and an empty vector for nodes member
+        pub fn new_ll() -> LinkedList<T> {
             return LinkedList {
                 nodes: Vec::new(),
                 head: Weak::new(),  // calling upgrade on this returns None
@@ -55,7 +58,12 @@ pub mod linked_list {
         }
 
 
-        fn add_value(&mut self, value: T) {
+        /// Add a Node containing value T to the end of the Linked List (make the new Node the
+        /// next member of the current tail Node)
+        ///
+        /// * `value`: T (matching the LinkedList's generic type parameter) to be stored in a new
+        ///         Node in the LinkedList
+        pub fn add_value(&mut self, value: T) {
             let new_node: Rc<RefCell<Node<T>>>;
 
             new_node = new_boxed_node(value);
@@ -72,6 +80,17 @@ pub mod linked_list {
             self.tail = Rc::downgrade(&new_node);
             self.nodes.push(new_node);
         }
+
+
+        pub fn peek_head_value(&self) -> Option<&T> {
+            // check if the head Weak reference resolves; if it does we can call the unsafe
+            //      pointers to deref it and get ta reference to its value without consuming it
+            return match self.head.upgrade() {
+                Some(_) => Some( unsafe { &(*(*self.head.as_ptr()).as_ptr()).value } ),
+                None => None
+            };
+        }
+
     }
 
     // fn new_ll<T>() -> LinkedList<T> {
