@@ -6,39 +6,44 @@ pub mod linked_list {
     use std::rc::{Rc, Weak};
     use std::cell::RefCell;
 
-    /// Node<T> struct:
-    ///
-    /// Node in a LinkedList struct. Contains a value and a Weak reference to the following Node in
-    /// the linked list.
+    /// Node in a LinkedList struct. Contains a value and an Option-wrapped Rc reference to the following Node in
+    /// the linked list (with interior mutability)
     ///
     /// * `value`: T must be of type that matches the LinkedList struct that this Node can be placed in
-    /// * `next`: Weak referencce, with interior mutability, to the next Node
+    /// * `next`: Option holding an Rc to the next node (should be the only reference but a Weak
+    ///     upgradable reference for any node should be allowed to exist for the purposes of updating
+    ///     the linked list tail member)
     ///
-    /// The effect of using Weak references here makes it so that if Nodes reference each other, such
-    /// cycles cannot lead to memory leaks due to inaccessible standing references if pointers to these
-    /// values are ever reassigned.
+    /// The effect of using Rc references here makes it so that any Node can be mutated by
+    /// accessing it from the preceded Node (a valid mutation would be assigning a subsequent new
+    /// Node in the LinkedList), and allowing a Weak reference to be made for the tail member in
+    /// the LinkedList.
     ///
     /// The effect of using interior mutability (via RefCell) makes it so we can assign a new next Node
     /// at the point when a new Node is added to the LinkedList struct.
+    ///
+    /// There is a danger in not using weak references for this Next member that two Nodes can
+    /// point to each other and cause circular reference. For that reason, Node next values should
+    /// only be updated using our defined methods with implementation.
     pub struct Node<T> {
         pub value: T,
-        pub next: Weak<RefCell<Node<T>>>
+        next: Option<Rc<RefCell<Node<T>>>>
     }
 
 
     /// A linked list struct containing "pointers" to Node structs.
     ///
-    /// Head and tail members contain weak references to Node structs wrapped in
+    /// Head and tail members contain references to Node structs wrapped inside.
     /// RefCell so their next members can be mutated, if the Node structs have not yet been dropped,
     /// but will not count as references that will prevent the Nodes from being dropped.
     ///
-    /// * `nodes`: A vector containing owned-Rcs containing the Nodes of the LinkedList
-    /// * `head`: A weak reference to a Node, (will not count against Node being dropped, must be
-    ///             resolved to an Option<RefCell<Node<T>>> in order to be accecssed with upgrade()
-    /// * `tail`: Same as head
+    /// * `head`: An Option-wrapped reference to a Node that allows for a weak reference to the same
+    ///     Node to be created. 
+    /// * `tail`: Weak reference to a Node, (will not count against Node being dropped, must be
+    ///     resolved to an Option<RefCell<Node<T>>> in order to be accecssed with upgrade()
+
     pub struct LinkedList<T> {
-        pub nodes: Vec<Rc<RefCell<Node<T>>>>,      // This member is in place to holds ownership of node data
-        pub head: Weak<RefCell<Node<T>>>,
+        pub head: Option<Rc<RefCell<Node<T>>>>,
         pub tail: Weak<RefCell<Node<T>>>
     }
 
@@ -46,17 +51,13 @@ pub mod linked_list {
     // Method implementtations for LinkedList struct
     impl<T> LinkedList<T> {
 
-
-        /// Return a new, empty LinkedList struct with empty Weak references in head and tail
-        /// members and an empty vector for nodes member
-        pub fn new_ll() -> LinkedList<T> {
+        /// Return a new, empty LinkedList struct
+        pub fn new() -> LinkedList<T> {
             return LinkedList {
-                nodes: Vec::new(),
-                head: Weak::new(),  // calling upgrade on this returns None
-                tail: Weak::new()
+                head: None,
+                tail: Weak::new()   // calling upgrade on this returns None; empty allocation
             };
         }
-
 
         /// Add a Node containing value T to the end of the Linked List (make the new Node the
         /// next member of the current tail Node)
@@ -65,51 +66,60 @@ pub mod linked_list {
         ///         Node in the LinkedList
         pub fn add_value(&mut self, value: T) {
             let new_node: Rc<RefCell<Node<T>>>;
-
-            new_node = new_boxed_node(value);
-
+            new_node = Node::new_ref_wrapped(value);
+            
+            // use clone() to not consume (thus invalidating) the existing tail member
             // upgrade turns Weak<T> into Option<Rc<T>>
             match self.tail.clone().upgrade() {
                 Some(node_ref) => { 
-                    node_ref.borrow_mut().next = Rc::downgrade(&new_node); 
+                    self.tail = Rc::downgrade(&new_node);
+                    node_ref.borrow_mut().next = Some(new_node); 
                 },
-                None => { 
-                    self.head = Rc::downgrade(&new_node); 
+                None => {
+                    self.tail = Rc::downgrade(&new_node);
+                    self.head = Some(new_node); 
                 },
             }
-            self.tail = Rc::downgrade(&new_node);
-            self.nodes.push(new_node);
         }
-
-
+        
+        /// Get a reference to the value in the head member (if the head member is not None)
         pub fn peek_head_value(&self) -> Option<&T> {
-            // check if the head Weak reference resolves; if it does we can call the unsafe
-            //      pointers to deref it and get ta reference to its value without consuming it
-            return match self.head.upgrade() {
-                Some(_) => Some( unsafe { &(*(*self.head.as_ptr()).as_ptr()).value } ),
-                None => None
+            // Option<T>.clone() -> Option<&T> (an Option<Rc<RefCell<Node<T>>>> we can consume as
+            //      it's a clone of self.head)
+            // Option<T>.map() - returns None or Some(T mapped)
+            return self.head.clone().map(|rc| Node::peek_val(Rc::clone(&rc)) );
+        }
+    }
+
+    impl<T> Node<T> {
+        
+        /// Return a new Node with the value T
+        fn new(value: T) -> Node<T> {
+            return Node {
+                value,
+                next: None
             };
         }
 
+        /// Same as new but returns the value wrapped in Rc<RefCell>> to enable multiple Weak
+        /// references to be made with interior mutability
+        fn new_ref_wrapped(value: T) -> Rc<RefCell<Node<T>>> {
+            return Rc::new(RefCell::new(Node::new(value)));
+        }
+
+        // uses unsafe code but only by dereferencing a raw pointer to a struct in order to create a
+        //      new ref to one of the struct's fields... lifetime of ref is still same as struct's.
+        fn peek_val<'a>(node_ref: Rc<RefCell<Node<T>>>) -> &'a T {
+            return unsafe { &(*node_ref.as_ptr()).value };
+        }
+
     }
 
-    // fn new_ll<T>() -> LinkedList<T> {
-    //     return LinkedList {
-    //         nodes: Vec::new(),
-    //         head: Weak::new(),  // calling upgrade on this returns None
-    //         tail: Weak::new()
-    //     };
-    // }
 
-    fn new_node<T>(value: T) -> Node<T> {
-        return Node {
-            value,
-            next: Weak::new()
-        };
-    }
+    // TODO: create validation so that when a node is assigned a next Node, it checks how many
+    // strong ref count
+    
 
-    fn new_boxed_node<T>(value: T) -> Rc<RefCell<Node<T>>> {
-        return Rc::new(RefCell::new(new_node(value)));
-    }
+
 }
 

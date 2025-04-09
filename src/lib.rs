@@ -9,7 +9,7 @@ pub fn add(left: u64, right: u64) -> u64 {
 }
 
 pub fn setup_linked_list() -> LinkedList<u32>  {
-    let mut ll: LinkedList<u32> = LinkedList::new_ll();
+    let mut ll: LinkedList<u32> = LinkedList::new();
     ll.add_value(2);
     ll.add_value(4);
     return ll;
