@@ -72,7 +72,7 @@ impl<T> LinkedList<T> {
         match self.tail.clone().upgrade() {
             Some(node_ref) => { 
                 self.tail = Rc::downgrade(&new_node);
-                node_ref.borrow_mut().assign_next(new_node); 
+                node_ref.borrow_mut().assign_next(Some(new_node)); 
             },
             None => {
                 self.tail = Rc::downgrade(&new_node);
@@ -87,6 +87,19 @@ impl<T> LinkedList<T> {
         //      it's a clone of self.head)
         // Option<T>.map() - returns None or Some(T mapped)
         self.head.clone().map(|rc| Node::peek_val(Rc::clone(&rc)) )
+    }
+
+    /// Removes the current head from the LinkedList and returns it.
+    /// The current head's next member becomes tthe new head.
+    pub fn dequeue(&mut self) -> Option<Rc<RefCell<Node<T>>>> {
+        match self.head.take() {
+            Some(node_rc) => {
+                let new_head: Option<Rc<RefCell<Node<T>>>> = node_rc.borrow_mut().get_next();
+                self.head = new_head;
+                Some(node_rc)
+            },
+            None => None
+        }
     }
 }
 
@@ -118,29 +131,105 @@ impl<T> Node<T> {
     ///
     /// * `node_ref`: Rc<RefCell<Node>> to peek into - can be created from Rc::clone.
     ///         We use a strong reference here to assert that the Rc can't be None.
-    fn peek_val<'a>(node_ref: Rc<RefCell<Node<T>>>) -> &'a T {
+    ///         
+    ///     WARNING: Funny story: you should call Rc::cloneto create node_ref so that it is not 
+    ///     the only reference to the Rc value passed in here, or else the returned value may be
+    ///     invalidated/dropped when the input node_ref Rc drops at the end of this function
+    pub fn peek_val<'a>(node_ref: Rc<RefCell<Node<T>>>) -> &'a T {
         unsafe { &(*node_ref.as_ptr()).value }
     }
 
     /// Assign this Node's next member as the input Rc<RefCell<Node>>.
     ///
     /// * `node_rc`: This should be an Rc<RefCell<Node>>; strong reference to a Node Rc
-    fn assign_next(&mut self, node_rc: Rc<RefCell<Node<T>>>) {
-        // disallow immediate circular reference
-        if node_rc.as_ptr() == self {
-            panic!("Can't assign next to input Node - input Node's next is this Node; circular reference!");
+    fn assign_next(&mut self, node: Option<Rc<RefCell<Node<T>>>>) {
+        match node {
+            Some(node_rc) => {
+                // disallow immediate circular reference
+                if node_rc.as_ptr() == self {
+                    panic!("Can't assign next to input Node - input Node's next is this Node; circular reference!");
+                }
+                self.next = Some(node_rc);
+            },
+            None => { 
+                self.next = None; 
+            }
         }
-        self.next = Some(node_rc);
     }
 
     /// Assign this Node's next member to be the input Rc<RefCell<Node>> - but first take the input
     ///     Rc<RefCell<Node>> and assign its next member to be this Node's current next member
     ///
     /// * `node_rc`: 
-    fn splice_in_next(&mut self, node_rc: Rc<RefCell<Node<T>>>) {
+    pub fn splice_in_next(&mut self, node: Option<Rc<RefCell<Node<T>>>>) {
+        match node {
+            Some(node_rc) => {
+                // clone() is required to get an owned copy of self.next from out of this
+                // mut ref self
+                node_rc.borrow_mut().assign_next(self.next.clone());
+                self.assign_next(Some(node_rc));
+            },
+            None => {   // discard remaining nodes
+                self.assign_next(None);
+            }
+        }
+    }
 
+    /// A function that solely invalidates the Node's next member and returns it.
+    fn get_next(&mut self) -> Option<Rc<RefCell<Node<T>>>> {
+        self.next.take()
     }
 
 }
 
 
+////////////////////////////////////////////////////////////////////////////
+//  TESTS
+
+fn setup_linked_list() -> LinkedList<u32>  {
+    let mut ll: LinkedList<u32> = LinkedList::new();
+    ll.add_value(2);
+    ll.add_value(4);
+    ll
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn linked_list_works() {
+        let basic_ll = setup_linked_list();
+        let result: Option<&u32> = basic_ll.peek_head_value();
+        assert!(result.is_some_and(|x| *x == 2));
+    }
+
+    #[test]
+    fn node_peek_val_works() {
+        let mut basic_ll = setup_linked_list();
+        let a = basic_ll.dequeue().unwrap();
+        let b = Node::peek_val(a.clone());
+        assert_eq!(b, &2);
+        assert_eq!(std::rc::Rc::strong_count(&a), 1);
+    }
+
+    #[test]
+    fn dequeue_works() {
+        let mut basic_ll = setup_linked_list();
+        let result_1 = basic_ll.dequeue();
+        let result_2: Option<&u32> = basic_ll.peek_head_value();
+
+        assert!(result_1.is_some_and(|x| x.borrow().value == 2));
+        assert!(result_2.is_some_and(|x| *x == 4));
+    }
+
+    #[test]
+    fn splice_works() {
+        let mut basic_ll = setup_linked_list();
+        let a = basic_ll.head.clone().unwrap();
+        a.borrow_mut().splice_in_next(Some(Node::new_ref_wrapped(6)));
+        basic_ll.dequeue();
+
+        assert!(basic_ll.peek_head_value().is_some_and(|x| *x == 6));
+    }
+}
