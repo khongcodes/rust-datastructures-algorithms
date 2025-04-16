@@ -41,7 +41,6 @@ pub struct Node<T> {
 ///     Node to be created. 
 /// * `tail`: Weak reference to a Node, (will not count against Node being dropped, must be
 ///     resolved to an Option<RefCell<Node<T>>> in order to be accecssed with upgrade()
-
 pub struct LinkedList<T> {
     pub head: Option<Rc<RefCell<Node<T>>>>,
     pub tail: Weak<RefCell<Node<T>>>
