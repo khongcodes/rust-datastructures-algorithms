@@ -1,3 +1,5 @@
+// TODO: change from using std::collections::Vec to this library's linked_list
+//
 // Following methods to be implemented
 // [x] BinarySearchTree::new
 // [x] BinarySearchTree::add_value

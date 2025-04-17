@@ -1,3 +1,5 @@
+// TODO: add method for dequeue value for LinkedList, like dequeue but it returns T (inner value)
+
 //! Simple linked list implementation that works using std::rc::{ Rc, Weak }, and interior
 //!     mutability with RefCell. Non-threadsafe (can be re-implemented with Arc and Mutex)
 
