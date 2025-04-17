@@ -1,8 +1,8 @@
 // Following methods to be implemented
 // [x] BinarySearchTree::new
-// [/] BinarySearchTree::add_value
+// [x] BinarySearchTree::add_value
 // [ ] BinarySearchTree::find_value - return true if present in tree
-// [/] BinarySearchTree::remove_value
+// [x] BinarySearchTree::remove_value
 // [ ] BinarySearchTree::min -  return smallest value in tree
 // [ ] BinarySearchTree::print_inorder
 // [ ] BinarySearchTree::print_preorder
@@ -10,6 +10,7 @@
 // [ ] BinarySearchTree::height
 //
 
+use std::mem;
 use std::cmp::Ordering;
 
 
@@ -21,6 +22,10 @@ pub struct Node<T: Ord> {
     value: T,
     left_branch: Option<Box<Node<T>>>,
     right_branch: Option<Box<Node<T>>>
+}
+
+enum TreeTraversalOrders {
+    Inorder, Preorder, Postorder
 }
 
 impl<T> BinarySearchTree<T> where T: Ord {
@@ -36,9 +41,9 @@ impl<T> BinarySearchTree<T> where T: Ord {
     ///
     /// * `value`: 
     fn add_value(&mut self, value: T) {
-        match &self.root {
+        match &mut self.root {
             Some(boxed_node) => {
-                // run boxed_node.add_value_as_child(value)
+                boxed_node.add_value_as_child(value);
             },
             None => {
                 self.root = Some(Box::new(Node::new(value)));
@@ -46,7 +51,21 @@ impl<T> BinarySearchTree<T> where T: Ord {
         }
     }
 
+    fn remove_value(&mut self, value: T) {
+        if self.root.is_some() {
+            self.root = self.root.take().unwrap().remove_value_if_child(value);
+        }
+    }
 
+    fn get_traverse_value_vec(&self, order: TreeTraversalOrders) -> Vec<&T> {
+        let mut list = Vec::new();
+        match order {
+            TreeTraversalOrders::Inorder => { Node::inorder_walk(&self.root, &mut list); },
+            TreeTraversalOrders::Preorder => { /* IMPLEMENT ME */ },
+            TreeTraversalOrders::Postorder => { /* IMPLEMENT ME */ }
+        };
+        list
+    }
 }
 
 impl<T> Node<T> where T: Ord {
@@ -78,7 +97,13 @@ impl<T> Node<T> where T: Ord {
                     self.left_branch = Some(Box::new(Node::new(value)));
                 }
             },
-            Ordering::Greater => {},
+            Ordering::Greater => {
+                if let Some(boxed_node) = &mut self.right_branch {
+                    boxed_node.add_value_as_child(value);
+                } else  {
+                    self.right_branch = Some(Box::new(Node::new(value)));
+                }
+            },
             Ordering::Equal => ()
         }
     }
@@ -108,5 +133,65 @@ impl<T> Node<T> where T: Ord {
             _ => ()
         };
         Some(Box::new(self))
+    }
+
+
+    fn inorder_walk<'a>(opt_node: &'a Option<Box<Node<T>>>, list: &mut Vec<&'a T>) {
+        if let Some(boxed_node) = opt_node {
+            Node::inorder_walk(&boxed_node.left_branch, list);
+            list.push(&boxed_node.value);
+            Node::inorder_walk(&boxed_node.right_branch, list);
+        }
+        // match opt_node {
+        //     None => { return; }
+        //     Some(boxed_node) => {
+        //         Node::inorder_walk(&boxed_node.left_branch, list);
+        //         list.push(&boxed_node.value);
+        //     }
+        // }
+
+        // if boxed_node.is_none() { return; }
+        // // let node = &boxed_node.unwrap();
+        // boxed_node.as_ref().inspect(|x| {
+        //     Node::inorder_walk(&x.left_branch, list)
+        // });
+        // Node::inorder_walk(&boxed_node.unwrap().left_branch, list);
+        // list.push(&boxed_node.unwrap().value);
+        // Node::inorder_walk(&boxed_node.unwrap().right_branch, list);
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////
+//  TESTS
+
+fn setup_bst() -> BinarySearchTree<u32> {
+    let mut bst: BinarySearchTree<u32> = BinarySearchTree::new();
+    bst.add_value(2);
+    bst.add_value(1);
+    bst.add_value(3);
+    bst
+}
+
+#[cfg (test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bst_can_be_created_and_added_to()  {
+        let bst = setup_bst();
+        assert!(&bst.root.is_some());
+        assert_eq!(bst.root.unwrap().value, 2);
+    }
+
+    #[test]
+    fn bst_can_be_traversed_inorder() {
+        let bst = setup_bst();
+        let list = bst.get_traverse_value_vec(TreeTraversalOrders::Inorder);
+        let mut list_iter = list.into_iter();
+        // let mut list_iter = bst.get_traverse_value_vec(TreeTraversalOrders::Preorder).into_iter();
+        assert_eq!(list_iter.next(), Some(&1));
+        assert_eq!(list_iter.next(), Some(&2));
+        assert_eq!(list_iter.next(), Some(&3));
     }
 }
