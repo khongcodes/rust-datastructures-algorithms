@@ -57,10 +57,10 @@ impl<T> BinarySearchTree<T> where T: Ord {
         }
     }
 
-    fn get_traverse_value_vec(&self, order: TreeTraversalOrders) -> Vec<&T> {
+    fn collectpeek_traversal_values(&self, order: TreeTraversalOrders) -> Vec<&T> {
         let mut list = Vec::new();
         match order {
-            TreeTraversalOrders::Inorder => { Node::inorder_walk(&self.root, &mut list); },
+            TreeTraversalOrders::Inorder => { Node::collectpeek_inorder(&self.root, &mut list); },
             TreeTraversalOrders::Preorder => { /* IMPLEMENT ME */ },
             TreeTraversalOrders::Postorder => { /* IMPLEMENT ME */ }
         };
@@ -136,11 +136,11 @@ impl<T> Node<T> where T: Ord {
     }
 
 
-    fn inorder_walk<'a>(opt_node: &'a Option<Box<Node<T>>>, list: &mut Vec<&'a T>) {
+    fn collectpeek_inorder<'a>(opt_node: &'a Option<Box<Node<T>>>, list: &mut Vec<&'a T>) {
         if let Some(boxed_node) = opt_node {
-            Node::inorder_walk(&boxed_node.left_branch, list);
+            Node::collectpeek_inorder(&boxed_node.left_branch, list);
             list.push(&boxed_node.value);
-            Node::inorder_walk(&boxed_node.right_branch, list);
+            Node::collectpeek_inorder(&boxed_node.right_branch, list);
         }
         // match opt_node {
         //     None => { return; }
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn bst_can_be_traversed_inorder() {
         let bst = setup_bst();
-        let list = bst.get_traverse_value_vec(TreeTraversalOrders::Inorder);
+        let list = bst.collectpeek_traversal_values(TreeTraversalOrders::Inorder);
         let mut list_iter = list.into_iter();
         // let mut list_iter = bst.get_traverse_value_vec(TreeTraversalOrders::Preorder).into_iter();
         assert_eq!(list_iter.next(), Some(&1));
