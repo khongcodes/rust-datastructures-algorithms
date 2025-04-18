@@ -1,5 +1,3 @@
-// TODO: add method for dequeue value for LinkedList, like dequeue but it returns T (inner value)
-
 //! Simple linked list implementation that works using std::rc::{ Rc, Weak }, and interior
 //!     mutability with RefCell. Non-threadsafe (can be re-implemented with Arc and Mutex)
 
@@ -102,6 +100,18 @@ impl<T> LinkedList<T> {
             None => None
         }
     }
+
+    pub fn dequeue_value(&mut self) -> Option<T> {
+        if let Some(node_rc) = self.dequeue() {
+            if let Ok(node_refcell) = Rc::try_unwrap(node_rc) {
+                Some(node_refcell.into_inner().consume_get_val())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 
@@ -138,6 +148,11 @@ impl<T> Node<T> {
     ///     invalidated/dropped when the input node_ref Rc drops at the end of this function
     pub fn peek_val<'a>(node_ref: Rc<RefCell<Node<T>>>) -> &'a T {
         unsafe { &(*node_ref.as_ptr()).value }
+    }
+
+    fn consume_get_val(self) -> T {
+        // unsafe { (*node_ref.as_ptr()).value }
+        self.value
     }
 
     /// Assign this Node's next member as the input Rc<RefCell<Node>>.

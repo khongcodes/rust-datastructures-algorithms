@@ -1,5 +1,3 @@
-// TODO: change from using std::collections::Vec to this library's linked_list
-//
 // Following methods to be implemented
 // [x] BinarySearchTree::new
 // [x] BinarySearchTree::add_value
@@ -12,8 +10,8 @@
 // [ ] BinarySearchTree::height
 //
 
-// use std::mem;
 use std::cmp::Ordering;
+use crate::linked_list;
 
 
 pub struct BinarySearchTree<T: Ord> {
@@ -63,6 +61,16 @@ impl<T> BinarySearchTree<T> where T: Ord {
         let mut list = Vec::new();
         match order {
             TreeTraversalOrders::Inorder => { Node::collectpeek_inorder(&self.root, &mut list); },
+            TreeTraversalOrders::Preorder => { /* IMPLEMENT ME */ },
+            TreeTraversalOrders::Postorder => { /* IMPLEMENT ME */ }
+        };
+        list
+    }
+
+    fn collectpeek_traversal_values2(&self, order: TreeTraversalOrders) -> linked_list::LinkedList<&T> {
+        let mut list = linked_list::LinkedList::new();
+        match order {
+            TreeTraversalOrders::Inorder => { Node::collectpeek_inorder2(&self.root, &mut list); },
             TreeTraversalOrders::Preorder => { /* IMPLEMENT ME */ },
             TreeTraversalOrders::Postorder => { /* IMPLEMENT ME */ }
         };
@@ -143,6 +151,14 @@ impl<T> Node<T> where T: Ord {
             Node::collectpeek_inorder(&boxed_node.right_branch, list);
         }
     }
+
+    fn collectpeek_inorder2<'a>(opt_node: &'a Option<Box<Node<T>>>, list: &mut linked_list::LinkedList<&'a T>) {
+        if let Some(boxed_node) = opt_node {
+            Node::collectpeek_inorder2(&boxed_node.left_branch, list);
+            list.add_value(&boxed_node.value);
+            Node::collectpeek_inorder2(&boxed_node.right_branch, list);
+        }
+    }
 }
 
 
@@ -187,6 +203,19 @@ mod tests {
         assert_eq!(list_iter.next(), Some(&4));
         assert_eq!(list_iter.next(), Some(&5));
         assert_eq!(list_iter.next(), Some(&6));
+
+    }
+
+    #[test]
+    fn bst_can_be_traversed_inorder_with_crate_ll() {
+        let bst = setup_bst();
+        let mut list = bst.collectpeek_traversal_values2(TreeTraversalOrders::Inorder);
+        assert_eq!(list.dequeue_value(), Some(&1));
+        assert_eq!(list.dequeue_value(), Some(&2));
+        assert_eq!(list.dequeue_value(), Some(&3));
+        assert_eq!(list.dequeue_value(), Some(&4));
+        assert_eq!(list.dequeue_value(), Some(&5));
+        assert_eq!(list.dequeue_value(), Some(&6));
 
     }
 }
