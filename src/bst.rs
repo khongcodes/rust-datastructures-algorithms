@@ -5,8 +5,8 @@
 // [x] BinarySearchTree::remove_value
 // [ ] BinarySearchTree::min -  return smallest value in tree
 // [x] BinarySearchTree::print_inorder
-// [ ] BinarySearchTree::print_preorder
-// [ ] BinarySearchTree::print_postorder
+// [x] BinarySearchTree::print_preorder
+// [x] BinarySearchTree::print_postorder
 // [ ] BinarySearchTree::height
 //
 
@@ -27,6 +27,7 @@ pub struct Node<T: Ord> {
 enum TreeTraversalOrders {
     Inorder, Preorder, Postorder
 }
+
 
 impl<T> BinarySearchTree<T> where T: Ord {
     
@@ -61,18 +62,18 @@ impl<T> BinarySearchTree<T> where T: Ord {
         let mut list = Vec::new();
         match order {
             TreeTraversalOrders::Inorder => { Node::collectpeek_inorder(&self.root, &mut list); },
-            TreeTraversalOrders::Preorder => { /* IMPLEMENT ME */ },
-            TreeTraversalOrders::Postorder => { /* IMPLEMENT ME */ }
+            TreeTraversalOrders::Preorder => { Node::collectpeek_preorder(&self.root, &mut list); },
+            TreeTraversalOrders::Postorder => { Node::collectpeek_postorder(&self.root, &mut list); }
         };
         list
     }
 
-    fn collectpeek_traversal_values2(&self, order: TreeTraversalOrders) -> linked_list::LinkedList<&T> {
+    fn collectpeek_traversal_values_cratell(&self, order: TreeTraversalOrders) -> linked_list::LinkedList<&T> {
         let mut list = linked_list::LinkedList::new();
         match order {
-            TreeTraversalOrders::Inorder => { Node::collectpeek_inorder2(&self.root, &mut list); },
-            TreeTraversalOrders::Preorder => { /* IMPLEMENT ME */ },
-            TreeTraversalOrders::Postorder => { /* IMPLEMENT ME */ }
+            TreeTraversalOrders::Inorder => { Node::collectpeek_inorder_cratell(&self.root, &mut list); },
+            TreeTraversalOrders::Preorder => { todo!() },
+            TreeTraversalOrders::Postorder => { todo!() }
         };
         list
     }
@@ -144,7 +145,10 @@ impl<T> Node<T> where T: Ord {
     }
 
 
-    fn collectpeek_inorder<'a>(opt_node: &'a Option<Box<Node<T>>>, list: &mut Vec<&'a T>) {
+    fn collectpeek_inorder<'a>(
+        opt_node: &'a Option<Box<Node<T>>>,
+        list: &mut Vec<&'a T>
+    ) {
         if let Some(boxed_node) = opt_node {
             Node::collectpeek_inorder(&boxed_node.left_branch, list);
             list.push(&boxed_node.value);
@@ -152,11 +156,36 @@ impl<T> Node<T> where T: Ord {
         }
     }
 
-    fn collectpeek_inorder2<'a>(opt_node: &'a Option<Box<Node<T>>>, list: &mut linked_list::LinkedList<&'a T>) {
+    fn collectpeek_inorder_cratell<'a>(
+        opt_node: &'a Option<Box<Node<T>>>, 
+        list: &mut linked_list::LinkedList<&'a T>
+    ) {
         if let Some(boxed_node) = opt_node {
-            Node::collectpeek_inorder2(&boxed_node.left_branch, list);
+            Node::collectpeek_inorder_cratell(&boxed_node.left_branch, list);
             list.add_value(&boxed_node.value);
-            Node::collectpeek_inorder2(&boxed_node.right_branch, list);
+            Node::collectpeek_inorder_cratell(&boxed_node.right_branch, list);
+        }
+    }
+
+    fn collectpeek_preorder<'a>(
+        opt_node: &'a Option<Box<Node<T>>>, 
+        list: &mut Vec<&'a T>
+    ) {
+        if let Some(boxed_node) = opt_node {
+            list.push(&boxed_node.value);
+            Node::collectpeek_preorder(&boxed_node.left_branch, list);
+            Node::collectpeek_preorder(&boxed_node.right_branch, list);
+        }
+    }
+
+    fn collectpeek_postorder<'a>(
+        opt_node: &'a Option<Box<Node<T>>>, 
+        list: &mut Vec<&'a T>
+    ) {
+        if let Some(boxed_node) = opt_node {
+            Node::collectpeek_postorder(&boxed_node.left_branch, list);
+            Node::collectpeek_postorder(&boxed_node.right_branch, list);
+            list.push(&boxed_node.value);
         }
     }
 }
@@ -203,19 +232,43 @@ mod tests {
         assert_eq!(list_iter.next(), Some(&4));
         assert_eq!(list_iter.next(), Some(&5));
         assert_eq!(list_iter.next(), Some(&6));
-
     }
 
     #[test]
-    fn bst_can_be_traversed_inorder_with_crate_ll() {
+    fn bst_can_be_traversed_inorder_with_cratell() {
         let bst = setup_bst();
-        let mut list = bst.collectpeek_traversal_values2(TreeTraversalOrders::Inorder);
+        let mut list = bst.collectpeek_traversal_values_cratell(TreeTraversalOrders::Inorder);
         assert_eq!(list.dequeue_value(), Some(&1));
         assert_eq!(list.dequeue_value(), Some(&2));
         assert_eq!(list.dequeue_value(), Some(&3));
         assert_eq!(list.dequeue_value(), Some(&4));
         assert_eq!(list.dequeue_value(), Some(&5));
         assert_eq!(list.dequeue_value(), Some(&6));
+    }
 
+    #[test]
+    fn bst_can_be_traversed_preorder() {
+        let bst = setup_bst();
+        let list = bst.collectpeek_traversal_values(TreeTraversalOrders::Preorder);
+        let mut list_iter = list.into_iter();
+        assert_eq!(list_iter.next(), Some(&4));
+        assert_eq!(list_iter.next(), Some(&2));
+        assert_eq!(list_iter.next(), Some(&1));
+        assert_eq!(list_iter.next(), Some(&3));
+        assert_eq!(list_iter.next(), Some(&6));
+        assert_eq!(list_iter.next(), Some(&5));
+    }
+
+    #[test]
+    fn bst_can_be_traversed_postorder() {
+        let bst = setup_bst();
+        let list = bst.collectpeek_traversal_values(TreeTraversalOrders::Postorder);
+        let mut list_iter = list.into_iter();
+        assert_eq!(list_iter.next(), Some(&1));
+        assert_eq!(list_iter.next(), Some(&3));
+        assert_eq!(list_iter.next(), Some(&2));
+        assert_eq!(list_iter.next(), Some(&5));
+        assert_eq!(list_iter.next(), Some(&6));
+        assert_eq!(list_iter.next(), Some(&4));
     }
 }
