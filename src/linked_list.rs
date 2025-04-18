@@ -4,7 +4,23 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
+
+/// A linked list struct containing "pointers" to Node structs.
 ///
+/// Head and tail members contain references to Node structs wrapped inside.
+/// RefCell so their next members can be mutated, if the Node structs have not yet been dropped,
+/// but will not count as references that will prevent the Nodes from being dropped.
+///
+/// * `head`: An Option-wrapped reference to a Node that allows for a weak reference to the same
+///     Node to be created. 
+/// * `tail`: Weak reference to a Node, (will not count against Node being dropped, must be
+///     resolved to an Option<RefCell<Node<T>>> in order to be accecssed with upgrade()
+pub struct LinkedList<T> {
+    pub head: Option<Rc<RefCell<Node<T>>>>,
+    pub tail: Weak<RefCell<Node<T>>>
+}
+
+
 /// Node in a LinkedList struct. Contains a value and an Option-wrapped Rc reference to the following Node in
 /// the linked list (with interior mutability)
 ///
@@ -30,21 +46,6 @@ pub struct Node<T> {
     next: Option<Rc<RefCell<Node<T>>>>
 }
 
-
-/// A linked list struct containing "pointers" to Node structs.
-///
-/// Head and tail members contain references to Node structs wrapped inside.
-/// RefCell so their next members can be mutated, if the Node structs have not yet been dropped,
-/// but will not count as references that will prevent the Nodes from being dropped.
-///
-/// * `head`: An Option-wrapped reference to a Node that allows for a weak reference to the same
-///     Node to be created. 
-/// * `tail`: Weak reference to a Node, (will not count against Node being dropped, must be
-///     resolved to an Option<RefCell<Node<T>>> in order to be accecssed with upgrade()
-pub struct LinkedList<T> {
-    pub head: Option<Rc<RefCell<Node<T>>>>,
-    pub tail: Weak<RefCell<Node<T>>>
-}
 
 
 // Method implementations for LinkedList struct
@@ -101,6 +102,8 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// Remove current head from the LinkedList, consume it, and return its value (unless the
+    /// current head is None).
     pub fn dequeue_value(&mut self) -> Option<T> {
         if let Some(node_rc) = self.dequeue() {
             if let Ok(node_refcell) = Rc::try_unwrap(node_rc) {
@@ -115,7 +118,7 @@ impl<T> LinkedList<T> {
 }
 
 
-
+// Method implementations for Node struct
 impl<T> Node<T> {
     
     /// Return a new Node with the value T
@@ -150,8 +153,8 @@ impl<T> Node<T> {
         unsafe { &(*node_ref.as_ptr()).value }
     }
 
+    /// Consume this Node and return its value
     fn consume_get_val(self) -> T {
-        // unsafe { (*node_ref.as_ptr()).value }
         self.value
     }
 

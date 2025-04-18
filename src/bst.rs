@@ -1,3 +1,5 @@
+//! Simple binary search tree implementation using Box references to Nodes.
+
 // Following methods to be implemented
 // [x] BinarySearchTree::new
 // [x] BinarySearchTree::add_value
@@ -14,33 +16,57 @@ use std::cmp::Ordering;
 use crate::linked_list;
 
 
+/// A binary search tree struct containing pointers to Node structs.
+///
+/// Values T in this tree must be comparable with < or > operators (or else this data structure is
+/// nonsensical to use).
+///
+/// * `root`: An Option-wrapped reference to the root Node of the binary search tree.
+///         This will be None if there are zero nodes in this tree.
 pub struct BinarySearchTree<T: Ord> {
     root: Option<Box<Node<T>>>
 }
 
+
+/// A Node in a BinarySearchTree struct.
+///
+/// * `value`: Value held in this Node - must be comparable with < or > (implement Ord trait)
+/// * `left_branch`: Option-wrapped reference to another Node, which should contain a Node with
+///         lesser value. Initializes as None.
+/// * `right_branch`: Option-wrapped reference to another Node, which should contain a Node with
+///         greater value. Initializes as None.
 pub struct Node<T: Ord> {
     value: T,
     left_branch: Option<Box<Node<T>>>,
     right_branch: Option<Box<Node<T>>>
 }
 
+
+/// Enum for traversal node order options on binary trees.
 enum TreeTraversalOrders {
     Inorder, Preorder, Postorder
 }
 
 
+// Method implementation for BinarySearchTree struct
 impl<T> BinarySearchTree<T> where T: Ord {
     
-    /// 
+    /// Return a new, empty BinarySearchTree struct
     fn new() -> BinarySearchTree<T> {
         BinarySearchTree {
             root: None
         }
     }
 
-    /// 
+    /// Add a Node to this BinarySearchTree struct.
     ///
-    /// * `value`: 
+    /// Accomplish this (if there is a root node) by beginning a recursive call to evaluate the new
+    /// value against the current node's value, starting with the root member Node.
+    ///
+    /// It should be noted - if this value is evaluated as Ordering::Equal (== operator) to another Node's
+    /// value in this tree, this value will be discarded without a Node being added.
+    ///
+    /// * `value`: The value to be added into the binary search tree.
     fn add_value(&mut self, value: T) {
         match &mut self.root {
             Some(boxed_node) => {
@@ -52,12 +78,21 @@ impl<T> BinarySearchTree<T> where T: Ord {
         }
     }
 
+    /// Find input value in the BinarySearchTree (using Ordering::Equal (== operator)) and remove
+    /// it (and its enclosing Node).
+    ///
+    /// * `value`: Value to be removed from the binary search tree.
     fn remove_value(&mut self, value: T) {
         if self.root.is_some() {
             self.root = self.root.take().unwrap().remove_value_if_child(value);
         }
     }
 
+    /// Create and return a vector containing references to the values held by Nodes in this
+    /// BinarySearchTree struct.
+    ///
+    /// * `order`: A variant of TreeTraversalOrders enum that determines the orders of the value
+    /// references in the returned vector
     fn collectpeek_traversal_values(&self, order: TreeTraversalOrders) -> Vec<&T> {
         let mut list = Vec::new();
         match order {
@@ -68,6 +103,16 @@ impl<T> BinarySearchTree<T> where T: Ord {
         list
     }
 
+    /// Experimental version of previous method collectpeek_traversal_values_cratell that uses this
+    /// crate's LinkedList struct instead of Vec. 
+    ///
+    /// Not fully implemented - LinkedList is less tested and therefore less reliable than standard library Vecs.
+    ///
+    /// A speed test should be created between this method and the previous method on
+    ///     TreeTraversalOrders::Inorder.
+    ///
+    /// * `order`: A variant of TreeTraversalOrders enum that determines the orders of the value
+    /// references in the returned vector
     fn collectpeek_traversal_values_cratell(&self, order: TreeTraversalOrders) -> linked_list::LinkedList<&T> {
         let mut list = linked_list::LinkedList::new();
         match order {
@@ -79,11 +124,13 @@ impl<T> BinarySearchTree<T> where T: Ord {
     }
 }
 
+
+// Method implementations for Node struct in a BinarySearchTree struct.
 impl<T> Node<T> where T: Ord {
 
-    /// 
+    /// Return a new Node struct with the value T.
     ///
-    /// * `value`: 
+    /// * `value`: Value to be stored in the Node.
     fn new(value: T) -> Node<T> {
         Node {
             value,
@@ -92,13 +139,22 @@ impl<T> Node<T> where T: Ord {
         }
     }
 
+    /// Return a reference to the value held in this Struct.
     fn peek_value(&self) -> &T {
         &self.value
     }
 
-    /// 
-    /// Needs a mutable self reference so it can assign to left_branch/right_branch members
-    /// * `value`: 
+    /// Add a child Node to this Node with the input value.
+    ///
+    /// In binary search trees, if a new value to be added is less than a parent node's value, it
+    /// should be added as a left-branch child of the parent node. If the new value is greater, it
+    /// should be added as the right-branch child of the parent node. If the branch node already
+    /// exists, the same operation should be done on the corresponding branch child node - recursively
+    /// invoke this method on that branch child node with the same value.
+    ///
+    /// Needs a mutable self reference so it can assign to left_branch/right_branch members.
+    ///
+    /// * `value`: value to be held by the child Node to be added to this Node.
     fn add_value_as_child(&mut self, value: T) {
         match value.cmp(&self.value) {
             Ordering::Less => {
@@ -120,16 +176,22 @@ impl<T> Node<T> where T: Ord {
     }
 
 
-    /// Note: this is a recursive method that consumes its calling struct.
-    /// If this Node's value member matches the input value, return None
+    /// If this Node's value member matches the input value (== operator), return None - the calling Node struct
+    /// is consumed by this, and the returned None will be assigned in this Node's place.
+    /// 
     /// Otherwise, if input value member is less than Node's value member, compare it to
     ///     left_branch and assign left_branch member to be the return val of this function invoked
     ///     on the left_branch Node (if it is not None - if it is None, do nothing because this
     ///     value cannot be found in the tree)
-    ///If this Node's value member is greater than Node's value member, compare it to right_branch
+    ///
+    /// If this Node's value member is greater than Node's value member, compare it to right_branch
     ///     and assign right_branch member to be the return val of this function invoked on the
     ///     right_branch Node (if it is not None (see note above))
-    /// * `value`: 
+    ///     
+    /// In both cases where this Node's value is not equal to the input value, return a new
+    ///     allocation of this Node in the heap (Box) because we consume the original.
+    ///
+    /// * `value`: Value to be removed from the Node or its children branches.
     fn remove_value_if_child(mut self, value: T) -> Option<Box<Node<T>>> {
         match value.cmp(&self.value) {
             Ordering::Less if self.left_branch.is_some() => {
@@ -145,6 +207,12 @@ impl<T> Node<T> where T: Ord {
     }
 
 
+    /// Assign to a Vec (using a mutable reference to it) node value references of this Node and
+    /// its branch-children Nodes, using inorder traversal, recursively calling this method.
+    ///
+    /// * `opt_node`: Option-wrapped Node reference - can be called directly on references to a
+    ///         Node's branch members
+    /// * `list`: mutable references to the Vec where Node value references should be added.
     fn collectpeek_inorder<'a>(
         opt_node: &'a Option<Box<Node<T>>>,
         list: &mut Vec<&'a T>
@@ -156,6 +224,12 @@ impl<T> Node<T> where T: Ord {
         }
     }
 
+    /// Assign to a LinkedList (from this crate) (using a mutable reference to it) node value references of this Node and
+    /// its branch-children Nodes, using inorder traversal, recursively calling this method.
+    ///
+    /// * `opt_node`: Option-wrapped Node reference - can be called directly on references to a
+    ///         Node's branch members
+    /// * `list`: mutable references to the LinkedList where Node value references should be added.
     fn collectpeek_inorder_cratell<'a>(
         opt_node: &'a Option<Box<Node<T>>>, 
         list: &mut linked_list::LinkedList<&'a T>
@@ -167,6 +241,12 @@ impl<T> Node<T> where T: Ord {
         }
     }
 
+    /// Assign to a Vec (using a mutable reference to it) node value references of this Node and
+    /// its branch-children Nodes, using preorder traversal, recursively calling this method.
+    ///
+    /// * `opt_node`: Option-wrapped Node reference - can be called directly on references to a
+    ///         Node's branch members
+    /// * `list`: mutable references to the Vec where Node value references should be added.
     fn collectpeek_preorder<'a>(
         opt_node: &'a Option<Box<Node<T>>>, 
         list: &mut Vec<&'a T>
@@ -178,6 +258,12 @@ impl<T> Node<T> where T: Ord {
         }
     }
 
+    /// Assign to a Vec (using a mutable reference to it) node value references of this Node and
+    /// its branch-children Nodes, using postorder traversal, recursively calling this method.
+    ///
+    /// * `opt_node`: Option-wrapped Node reference - can be called directly on references to a
+    ///         Node's branch members
+    /// * `list`: mutable references to the Vec where Node value references should be added.
     fn collectpeek_postorder<'a>(
         opt_node: &'a Option<Box<Node<T>>>, 
         list: &mut Vec<&'a T>
@@ -219,6 +305,16 @@ mod tests {
         let bst = setup_bst();
         assert!(&bst.root.is_some());
         assert_eq!(bst.root.unwrap().value, 4);
+    }
+
+    // #[test]
+    fn bst_height_can_be_evaluated() {
+        let bst = setup_bst();
+    }
+
+    // #[test]
+    fn bst_can_delete_nodes() {
+        let bst = setup_bst();
     }
 
     #[test]
