@@ -192,7 +192,7 @@ impl<T> Node<T> where T: Ord {
     ///     allocation of this Node in the heap (Box) because we consume the original.
     ///
     /// * `value`: Value to be removed from the Node or its children branches.
-    fn remove_value_if_child(mut self, value: T) -> Option<Box<Node<T>>> {
+    fn remove_value_if_child(mut self, value: &T) -> Option<Box<Node<T>>> {
         match value.cmp(&self.value) {
             Ordering::Less if self.left_branch.is_some() => {
                 self.left_branch = self.left_branch.unwrap().remove_value_if_child(value);
@@ -200,11 +200,77 @@ impl<T> Node<T> where T: Ord {
             Ordering::Greater if self.right_branch.is_some() => {
                 self.right_branch = self.right_branch.unwrap().remove_value_if_child(value);
             },
-            Ordering::Equal => { return None; },
+            Ordering::Equal => { return None; },    // REPLACE THIS WITH return value of calling
+                                                    // remove_self_from_tree on self
             _ => ()
         };
         Some(Box::new(self))
     }
+
+
+    fn remove_self_from_tree(mut self) -> Option<Box<Node<T>>> {
+        let left_child_exists = self.left_branch.is_some();
+        let right_child_exists = self.right_branch.is_some();
+
+        if !left_child_exists {
+            if !right_child_exists {    // self has no children
+                return None;
+            } else {                    // self has only right child
+                return self.right_branch;
+            }
+        }
+        if !right_child_exists {        // self has only left child
+            return self.left_branch;
+        }
+                                        // self has both left and right children
+        
+        // find the smallest node that is a child of this node's right child, and swap their values
+    
+        // then recursively call down call to delete the node with the old value
+        // (remove_value_if_child), to make sure the new node's parent sets its 
+        // reference to the Node-to-be-deleted as None
+
+        // THIS IS A BOX RAW POINTER, needs to be turned back into box with unsafe
+        // this raw pointer is expressed as form of reference on self.
+        let node_with_new_value = self.right_branch.as_deref_mut().unwrap().find_minimum_child_below();
+
+        
+        std::mem::swap(&mut self.value, &mut node_with_new_value.value);
+
+        Some(Box::new(self))
+    }
+
+    // CURRENTLY ONLY IN PROOF OF CONCEPT - return pointer to immediate left_branch child node
+    // only gets called where we already know the node being passed in has two non-None children
+    fn find_minimum_child_below(&mut self) -> Box<&mut Node<T>> {
+        let option_wrapped_node = self.left_branch.as_deref_mut().unwrap();
+        return Box::new(option_wrapped_node);
+    }
+
+    // TODO: DELETE THIS WHOLE BLOCK IF UNNECESSARY
+    // // allocate a pointer in heap (Box) to smallest child of this node, return raw pointer
+    // fn find_mut_ref_minimum_child_below(mut self, ) -> (Node<T>, *mut Node<T>) {
+    //     if let Some(smaller_node) = self.left_branch {
+    //         smaller_node.find_mut_ref_minimum_child_below()
+    //     } else {
+    //         (self, )
+    //         Box::into_raw(Box::new(self))
+    //     }
+    // }
+    //
+    //
+    // fn find_min_value_below(&self) -> &T {
+    //     
+    // }
+    //
+    //
+    // fn swap_value(other_node: *mut &Node<T>, this_node: Node<T>) -> Option<Box<Node<T>>> {
+    //    Some(Box::new(this_node)) 
+    // }
+    //
+    // fn swap_with_min_child_below(&mut self) {
+    //     let node_with_new_value = self.right_branch.as_deref_mut().unwrap();
+    // }
 
 
     /// Assign to a Vec (using a mutable reference to it) node value references of this Node and
