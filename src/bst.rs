@@ -81,7 +81,7 @@ impl<T> BinarySearchTree<T> where T: Ord {
     /// Find input value in the BinarySearchTree (using Ordering::Equal (== operator)) and remove
     ///     it (and its enclosing Node).
     ///
-    ///     Node::remove_value_if_child is a recursive method that consumes the calling Node
+    /// Node::remove_value_if_child is a recursive method that consumes the calling Node
     ///     struct and returns a new allocated Box to be assigned in place.
     ///
     /// * `value`: Value to be removed from the binary search tree.
@@ -183,7 +183,7 @@ impl<T> Node<T> where T: Ord {
     ///     calling remove_self_from_tree and replacing the current Node in place with its return value.
     ///     See remove_self_from_tree documentation on return value of this operation.
     ///
-    ///     It should be noted: the calling Node struct is consumed by this method if self's value members
+    /// It should be noted: the calling Node struct is consumed by this method if self's value members
     ///     matches the search value.
     /// 
     /// Otherwise, if input value member is less than Node's value member, compare it to
@@ -227,18 +227,18 @@ impl<T> Node<T> where T: Ord {
     /// If this Node has only right child or only left child: replace self with that child.
     ///
     /// If this Node has two children:
-    ///     1. Find the smallest Node that is a child of this node's right child. From here on 
-    ///         we will call the Node that we find NodeB, and self NodeA.
-    ///             NodeA: { valueA }
-    ///             NodeB: { valueB } (valueB < valueA)
+    /// 1. Find the smallest Node that is a child of this node's right child. From here on 
+    ///     we will call the Node that we find NodeB, and self NodeA.
+    ///     NodeA: { valueA }
+    ///     NodeB: { valueB } (valueB < valueA)
     ///
-    ///     2. Swap that node's value (valueB) with the value in self (valueA).
-    ///             NodeA: { valueB }
-    ///             NodeB: { valueA }
+    /// 2. Swap that node's value (valueB) with the value in self (valueA).
+    ///     NodeA: { valueB }
+    ///     NodeB: { valueA }
     ///
-    ///     3. Recursively call down this child's right-child-branch (the branch of NodeA that 
-    ///         terminates in NodeB) to delete the node with valueA, to make sure NodeB's parent
-    ///         Node also sets its reference to NodeB as None.
+    /// 3. Recursively call down this child's right-child-branch (the branch of NodeA that 
+    ///     terminates in NodeB) to delete the node with valueA, to make sure NodeB's parent
+    ///     Node also sets its reference to NodeB as None.
     ///
     fn remove_self_from_tree(mut self) -> Option<Box<Node<T>>> {
         let left_child_exists = self.left_branch.is_some();
@@ -255,21 +255,40 @@ impl<T> Node<T> where T: Ord {
             return self.left_branch;
         }
 
-        // THIS IS A BOX RAW POINTER, needs to be turned back into box with unsafe
-        // this raw pointer is expressed as form of reference on self.
+        // DELETE COMMENTS BELOW IF RETURNING &mut Node<T> works (instead of wrapping this in a Box)
+        // Get a new Box pointer containing a mutable ref (from self) to the min child. This Box
+        //  goes out of scope and is dumped at the end of this method, but that's okay because we
+        //  only need it for the std::mem::swap call.
         let node_with_new_value = self.right_branch.as_deref_mut().unwrap().find_minimum_child_below();
 
         std::mem::swap(&mut self.value, &mut node_with_new_value.value);
+        
+
+        // attempt copy value out of being a reference to self.right_branch... don't think this is
+        // really possible.
+        let a = Box::new(node_with_new_value.value);
+
+        // BECAUSE the input value is a reference, currently
+        // I don't know if we can get out of just making T have the Copy trait bound.
+        self.right_branch = self.right_branch.unwrap().remove_value_if_child(a.as_ref());
+        // recursive downcall should happen here
+
         Some(Box::new(self))
     }
 
-    // CURRENTLY ONLY IN PROOF OF CONCEPT - return pointer to immediate left_branch child node
-    // It should be noted: this method only gets called where we already know the self Node has two non-None children.
-    //
-    fn find_minimum_child_below(&mut self) -> Box<&mut Node<T>> {
-        let option_wrapped_node = self.left_branch.as_deref_mut().unwrap();
-        return Box::new(option_wrapped_node);
+
+    /// Recursively return a new Box pointer (mutable) to the smallest child below self
+    ///
+    /// Helper method to remove_self_from_tree method.
+    ///
+    fn find_minimum_child_below(&mut self) -> &mut Node<T> {
+        if self.left_branch.is_some() {
+            self.find_minimum_child_below()
+        } else {
+            self
+        }
     }
+
 
     // TODO: DELETE THIS WHOLE BLOCK IF UNNECESSARY
     // // allocate a pointer in heap (Box) to smallest child of this node, return raw pointer
