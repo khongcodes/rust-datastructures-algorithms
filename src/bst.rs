@@ -255,22 +255,25 @@ impl<T> Node<T> where T: Ord {
             return self.left_branch;
         }
 
+        let mutref_right_branch = self.right_branch.as_deref_mut().unwrap();
         // DELETE COMMENTS BELOW IF RETURNING &mut Node<T> works (instead of wrapping this in a Box)
         // Get a new Box pointer containing a mutable ref (from self) to the min child. This Box
         //  goes out of scope and is dumped at the end of this method, but that's okay because we
         //  only need it for the std::mem::swap call.
-        let node_with_new_value = self.right_branch.as_deref_mut().unwrap().find_minimum_child_below();
+        let node_with_new_value = mutref_right_branch.find_minimum_child_below();
 
         std::mem::swap(&mut self.value, &mut node_with_new_value.value);
         
 
         // attempt copy value out of being a reference to self.right_branch... don't think this is
         // really possible.
-        let a = Box::new(node_with_new_value.value);
+        // let a = Box::new(node_with_new_value.value);
 
         // BECAUSE the input value is a reference, currently
         // I don't know if we can get out of just making T have the Copy trait bound.
-        self.right_branch = self.right_branch.unwrap().remove_value_if_child(a.as_ref());
+        // self.right_branch = self.right_branch.unwrap().remove_value_if_child(a.as_ref());
+
+        mutref_right_branch.drop_misaligned_child();
         // recursive downcall should happen here
 
         Some(Box::new(self))
@@ -286,6 +289,17 @@ impl<T> Node<T> where T: Ord {
             self.find_minimum_child_below()
         } else {
             self
+        }
+    }
+
+
+    fn drop_misaligned_child(&mut self) {
+        if let Some(left_child) = &self.left_branch {
+            if self.value < left_child.value {
+                self.left_branch = None;
+            } else {
+                self.drop_misaligned_child();
+            }
         }
     }
 
@@ -421,9 +435,16 @@ mod tests {
         let bst = setup_bst();
     }
 
-    // #[test]
+    #[test]
     fn bst_can_delete_nodes() {
-        let bst = setup_bst();
+        let mut bst = setup_bst();
+        bst.remove_value(1);
+        bst.remove_value(2);
+        let mut list_iter = bst.collectpeek_traversal_values(TreeTraversalOrders::Inorder).into_iter();
+        assert_eq!(list_iter.next(), Some(&3));
+        assert_eq!(list_iter.next(), Some(&4));
+        assert_eq!(list_iter.next(), Some(&5));
+        assert_eq!(list_iter.next(), Some(&6));
     }
 
     #[test]
