@@ -170,9 +170,6 @@ impl<T> Node<T> where T: Ord {
     /// children branch Nodes.
     ///
     fn find_value(&self, value: &T) -> bool {
-        // 1. check if self value is value
-        // 2. if left is some, call this on left child
-        // 3. if that did not return true and right is some, call this on right child
         let mut value_found: bool = &self.value == value;
 
         if !value_found && self.left_branch.is_some() {
