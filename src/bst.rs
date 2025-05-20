@@ -207,8 +207,7 @@ impl<T> Node<T> where T: Ord {
             Ordering::Greater if self.right_branch.is_some() => {
                 self.right_branch = self.right_branch.unwrap().remove_value_if_child(value);
             },
-            Ordering::Equal => { return None; },    // REPLACE THIS WITH return value of calling
-                                                    // remove_self_from_tree on self
+            Ordering::Equal => { return self.remove_self_from_tree(); },
             _ => ()
         };
         Some(Box::new(self))
