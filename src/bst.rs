@@ -3,7 +3,7 @@
 // Following methods to be implemented
 // [x] BinarySearchTree::new
 // [x] BinarySearchTree::add_value
-// [ ] BinarySearchTree::find_value - return true if present in tree
+// [x] BinarySearchTree::find_value - return true if present in tree
 // [x] BinarySearchTree::remove_value
 // [ ] BinarySearchTree::min -  return smallest value in tree
 // [x] BinarySearchTree::print_inorder
@@ -55,6 +55,17 @@ impl<T> BinarySearchTree<T> where T: Ord {
     fn new() -> BinarySearchTree<T> {
         BinarySearchTree {
             root: None
+        }
+    }
+
+    /// Find whether a value is present in a BinarySearchTree struct.
+    ///
+    /// * `value`: value to be searched for.
+    fn find_value(&self, value: &T) -> bool {
+        if self.root.is_some() {
+            self.root.as_ref().unwrap().find_value(value)
+        } else {
+            false
         }
     }
 
@@ -143,8 +154,36 @@ impl<T> Node<T> where T: Ord {
     }
 
     /// Return a reference to the value held in this Struct.
+    ///
     fn peek_value(&self) -> &T {
         &self.value
+    }
+
+    /// 1. Check if Node's value == input value
+    /// 2. If no: if left_branch is some, call this method on an immutable ref of left child
+    /// 3. If still no: if right_branch is some, call this method on an immutable ref of right
+    ///    child.
+    ///
+    /// Return whether value was found.
+    ///
+    /// * `value`: Value to be checked; whether it is contained in this Node or any of this Node's
+    /// children branch Nodes.
+    ///
+    fn find_value(&self, value: &T) -> bool {
+        // 1. check if self value is value
+        // 2. if left is some, call this on left child
+        // 3. if that did not return true and right is some, call this on right child
+        let mut value_found: bool = &self.value == value;
+
+        if !value_found && self.left_branch.is_some() {
+            value_found = self.left_branch.as_ref().unwrap().find_value(value);
+        }
+
+        if !value_found && self.right_branch.is_some() {
+            value_found = self.right_branch.as_ref().unwrap().find_value(value);
+        }
+
+        value_found
     }
 
     /// Add a child Node to this Node with the input value.
@@ -177,7 +216,6 @@ impl<T> Node<T> where T: Ord {
             Ordering::Equal => ()
         }
     }
-
 
     /// If this Node's value member matches the input value (== operator), remove self from tree by
     ///     calling remove_self_from_tree and replacing the current Node in place with its return value.
@@ -212,7 +250,6 @@ impl<T> Node<T> where T: Ord {
         };
         Some(Box::new(self))
     }
-
 
     /// This self-consume method is run on a pointer to a Node - either from a parent or from the
     ///     BinarySearchTree struct - from the remove_value_if_child method, which assigns the
@@ -268,7 +305,6 @@ impl<T> Node<T> where T: Ord {
         Some(Box::new(self))
     }
 
-
     /// Recursively return a new Box pointer (mutable) to the smallest child below self.
     /// Helper method to remove_self_from_tree method.
     ///
@@ -279,7 +315,6 @@ impl<T> Node<T> where T: Ord {
             self
         }
     }
-
 
     /// Recursively go through left-children of calling Node; remove the reference in the parent if
     /// the child's value is greater than the parent's (should only happen in process of deleting a
@@ -294,7 +329,6 @@ impl<T> Node<T> where T: Ord {
             }
         }
     }
-
 
     /// Assign to a Vec (using a mutable reference to it) node value references of this Node and
     /// its branch-children Nodes, using inorder traversal, recursively calling this method.
@@ -312,7 +346,6 @@ impl<T> Node<T> where T: Ord {
             Node::collectpeek_inorder(&boxed_node.right_branch, list);
         }
     }
-
 
     /// Assign to a LinkedList (from this crate) (using a mutable reference to it) node value references of this Node and
     /// its branch-children Nodes, using inorder traversal, recursively calling this method.
@@ -400,6 +433,14 @@ mod tests {
     // #[test]
     fn bst_height_can_be_evaluated() {
         let bst = setup_bst();
+    }
+
+    #[test]
+    fn bst_can_be_searched() {
+        let bst = setup_bst();
+        assert!(&bst.find_value(&4));
+        assert!(&bst.find_value(&3));
+        assert!(!&bst.find_value(&88));
     }
 
     #[test]
