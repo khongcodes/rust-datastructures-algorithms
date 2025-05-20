@@ -255,7 +255,7 @@ impl<T> Node<T> where T: Ord {
         }
 
         let mutref_right_branch = self.right_branch.as_deref_mut().unwrap();
-        // DELETE COMMENTS BELOW IF RETURNING &mut Node<T> works (instead of wrapping this in a Box)
+        
         // Get a new Box pointer containing a mutable ref (from self) to the min child. This Box
         //  goes out of scope and is dumped at the end of this method, but that's okay because we
         //  only need it for the std::mem::swap call.
@@ -263,24 +263,13 @@ impl<T> Node<T> where T: Ord {
 
         std::mem::swap(&mut self.value, &mut node_with_new_value.value);
         
-
-        // attempt copy value out of being a reference to self.right_branch... don't think this is
-        // really possible.
-        // let a = Box::new(node_with_new_value.value);
-
-        // BECAUSE the input value is a reference, currently
-        // I don't know if we can get out of just making T have the Copy trait bound.
-        // self.right_branch = self.right_branch.unwrap().remove_value_if_child(a.as_ref());
-
         mutref_right_branch.drop_misaligned_child();
-        // recursive downcall should happen here
 
         Some(Box::new(self))
     }
 
 
-    /// Recursively return a new Box pointer (mutable) to the smallest child below self
-    ///
+    /// Recursively return a new Box pointer (mutable) to the smallest child below self.
     /// Helper method to remove_self_from_tree method.
     ///
     fn find_minimum_child_below(&mut self) -> &mut Node<T> {
@@ -292,6 +281,10 @@ impl<T> Node<T> where T: Ord {
     }
 
 
+    /// Recursively go through left-children of calling Node; remove the reference in the parent if
+    /// the child's value is greater than the parent's (should only happen in process of deleting a
+    /// node that has two child Nodes)
+    ///
     fn drop_misaligned_child(&mut self) {
         if let Some(left_child) = &self.left_branch {
             if self.value < left_child.value {
@@ -301,32 +294,6 @@ impl<T> Node<T> where T: Ord {
             }
         }
     }
-
-
-    // TODO: DELETE THIS WHOLE BLOCK IF UNNECESSARY
-    // // allocate a pointer in heap (Box) to smallest child of this node, return raw pointer
-    // fn find_mut_ref_minimum_child_below(mut self, ) -> (Node<T>, *mut Node<T>) {
-    //     if let Some(smaller_node) = self.left_branch {
-    //         smaller_node.find_mut_ref_minimum_child_below()
-    //     } else {
-    //         (self, )
-    //         Box::into_raw(Box::new(self))
-    //     }
-    // }
-    //
-    //
-    // fn find_min_value_below(&self) -> &T {
-    //     
-    // }
-    //
-    //
-    // fn swap_value(other_node: *mut &Node<T>, this_node: Node<T>) -> Option<Box<Node<T>>> {
-    //    Some(Box::new(this_node)) 
-    // }
-    //
-    // fn swap_with_min_child_below(&mut self) {
-    //     let node_with_new_value = self.right_branch.as_deref_mut().unwrap();
-    // }
 
 
     /// Assign to a Vec (using a mutable reference to it) node value references of this Node and
@@ -345,6 +312,7 @@ impl<T> Node<T> where T: Ord {
             Node::collectpeek_inorder(&boxed_node.right_branch, list);
         }
     }
+
 
     /// Assign to a LinkedList (from this crate) (using a mutable reference to it) node value references of this Node and
     /// its branch-children Nodes, using inorder traversal, recursively calling this method.
